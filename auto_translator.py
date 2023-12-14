@@ -22,11 +22,7 @@ def get_description(url):
     headers = {'Authorization': access_token}
     api_url = url.replace("github.com", "api.github.com/repos")
     response = requests.get(api_url, proxies=proxy, headers=headers)
-    if response.ok:
-        description = response.json()["description"]
-        return description
-    else:
-        return None
+    return response.json()["description"] if response.ok else None
 
 def do_auto_update_star():
     # 读取md文件的内容
@@ -46,18 +42,14 @@ def do_auto_update_star():
         header_row = table.find('tr')
         # 找到所有的单元格
         cells = header_row.find_all('th')
-        # 找到 "Last Name" 所在的列
-        last_name_column_index = None
-        for i, cell in enumerate(cells):
-            if cell.text == 'introduction':
-                last_name_column_index = i
-                break
-
+        last_name_column_index = next(
+            (i for i, cell in enumerate(cells) if cell.text == 'introduction'),
+            None,
+        )
         # 添加列数据
         data_rows = table.find_all('tr')[1:]
         for row in data_rows:
-            match = re.search(r'<a href="(.*?)">', str(row))
-            if match:
+            if match := re.search(r'<a href="(.*?)">', str(row)):
                 new_data_cell = soup.new_tag('td')
                 url = match.group(1)
                 new_data_cell.string = get_description(url) if get_description(url) else ""
