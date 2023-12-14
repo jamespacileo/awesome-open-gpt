@@ -22,15 +22,10 @@ def get_star_count(url):
     headers = {'Authorization': access_token}
     api_url = url.replace("github.com", "api.github.com/repos")
     response = requests.get(api_url, proxies=proxy, headers=headers)
-    if response.ok:
-        star_count = response.json()["stargazers_count"]
-        if star_count >= 1000:
-            star_count_str = f'{star_count / 1000:.1f}k'
-        else:
-            star_count_str = str(star_count)
-        return star_count_str
-    else:
+    if not response.ok:
         return None
+    star_count = response.json()["stargazers_count"]
+    return f'{star_count / 1000:.1f}k' if star_count >= 1000 else str(star_count)
 
 def do_auto_update_star():
     # 读取md文件的内容
@@ -50,13 +45,10 @@ def do_auto_update_star():
         header_row = table.find('tr')
         # 找到所有的单元格
         cells = header_row.find_all('th')
-        # 找到 "Last Name" 所在的列
-        last_name_column_index = None
-        for i, cell in enumerate(cells):
-            if cell.text == 'github地址':
-                last_name_column_index = i
-                break
-
+        last_name_column_index = next(
+            (i for i, cell in enumerate(cells) if cell.text == 'github地址'),
+            None,
+        )
         column_names = [th.text for th in header_row.find_all('th')]
         if '点赞数' not in column_names:
             new_header_cell = soup.new_tag('th')
@@ -66,8 +58,7 @@ def do_auto_update_star():
         # 添加列数据
         data_rows = table.find_all('tr')[1:]
         for row in data_rows:
-            match = re.search(r'<a href="(.*?)">', str(row))
-            if match:
+            if match := re.search(r'<a href="(.*?)">', str(row)):
                 new_data_cell = soup.new_tag('td')
                 url = match.group(1)
                 new_data_cell.string = get_star_count(url) if get_star_count(url) else ""
